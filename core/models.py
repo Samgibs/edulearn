@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
+from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
@@ -43,7 +44,7 @@ class Admin(models.Model):
         return self.full_name
 
 class Teacher(models.Model):
-    id = models.CharField(max_length=10, primary_key=True)
+    id = models.CharField(max_length=10, primary_key=True, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=255)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=False, null=False)
@@ -61,11 +62,22 @@ class Teacher(models.Model):
     status = models.BooleanField(default=True)
     payment_rate = models.DecimalField(max_digits=10, decimal_places=2)
 
+    def save(self, *args, **kwargs):
+        if not self.id:  
+            self.id = self.generate_id()
+
+        super(Teacher, self).save(*args, **kwargs)
+
+    def generate_id(self):
+        prefix = "TEA"  
+        random_id = get_random_string(6, allowed_chars='0123456789')
+        return f"{prefix}{random_id}"
+
     def __str__(self):
         return self.full_name
     
 class Student(models.Model):
-    id = models.CharField(max_length=10, primary_key=True)
+    id = models.CharField(max_length=10, primary_key=True, editable=False) 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=255)
     profile_picture = models.ImageField(upload_to='profile_pictures/', blank=False, null=False)
@@ -79,9 +91,20 @@ class Student(models.Model):
     total_fees = models.DecimalField(max_digits=10, decimal_places=2)
     fee_status = models.BooleanField(default=False)
     progress = models.ForeignKey('Progress', on_delete=models.CASCADE, related_name='student_progress')
-    results = models.ManyToManyField('Assessment')  # Fixed typo from 'Assesment' to 'Assessment'
+    results = models.ManyToManyField('Assessment')
     enrolled_courses = models.ManyToManyField('Course', through='Enrollment')
     remaining_fee = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = self.generate_id()
+
+        super(Student, self).save(*args, **kwargs)
+
+    def generate_id(self):
+        prefix = "STU" 
+        random_id = get_random_string(6, allowed_chars='0123456789')
+        return f"{prefix}{random_id}"
 
     def __str__(self):
         return self.full_name
