@@ -90,7 +90,7 @@ class Teacher(models.Model):
     net_salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, editable=False)
     tax_deductions = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, editable=False)
     loan_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, validators=[MinValueValidator(Decimal('0.00'))])
-
+    students = models.ManyToManyField('Student', through='StudentTeacher')
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = self.generate_id()
@@ -123,6 +123,20 @@ class Teacher(models.Model):
         recipient_list = [self.user.email]
         send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
 
+    def view_student_marks(self, student):
+        """Returns the marks of the specified student."""
+        if student in self.students.all():
+            return student.calculate_grades()
+        else:
+            raise ValueError("You do not have access to this student's marks.")
+    
+    def get_students_marks(self):
+        """Get marks for all students assigned to the teacher."""
+        marks_data = {}
+        for student in self.students.all():
+            marks_data[student.full_name] = student.calculate_grades()  # Assuming this method calculates and returns grades.
+        return marks_data
+
     # def send_sms_notification(self, amount):
     #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
     #     message = f'Dear {self.full_name}, you have received a payment of Ksh {amount}. Thank you!'
@@ -134,6 +148,17 @@ class Teacher(models.Model):
 
     def __str__(self):
         return self.full_name
+
+class StudentTeacher(models.Model):
+    student = models.ForeignKey('Student', on_delete=models.CASCADE)  
+    teacher = models.ForeignKey('Teacher', on_delete=models.CASCADE)  
+    date_assigned = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (('student', 'teacher'),)
+
+    def __str__(self):
+        return f"{self.student.full_name} assigned to {self.teacher.full_name}"
 
 
 class Student(models.Model):
@@ -211,6 +236,8 @@ class Student(models.Model):
         message = f'Dear {self.full_name},\n\nYour payment of Ksh {amount} has been successfully processed.\nThank you!'
         recipient_list = [self.user.email]
         send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
+
+
 
     # def send_sms_notification(self, amount):
     #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
