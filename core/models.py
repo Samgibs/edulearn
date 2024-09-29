@@ -123,14 +123,14 @@ class Teacher(models.Model):
         recipient_list = [self.user.email]
         send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
 
-    def send_sms_notification(self, amount):
-        client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
-        message = f'Dear {self.full_name}, you have received a payment of Ksh {amount}. Thank you!'
-        client.messages.create(
-            body=message,
-            from_='TWILIO_PHONE_NUMBER',
-            to=self.mpesa_number
-        )
+    # def send_sms_notification(self, amount):
+    #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
+    #     message = f'Dear {self.full_name}, you have received a payment of Ksh {amount}. Thank you!'
+    #     client.messages.create(
+    #         body=message,
+    #         from_='TWILIO_PHONE_NUMBER',
+    #         to=self.mpesa_number
+    #     )
 
     def __str__(self):
         return self.full_name
@@ -212,14 +212,14 @@ class Student(models.Model):
         recipient_list = [self.user.email]
         send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
 
-    def send_sms_notification(self, amount):
-        client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
-        message = f'Dear {self.full_name}, your payment of Ksh {amount} has been successfully processed. Thank you!'
-        client.messages.create(
-            body=message,
-            from_='TWILIO_PHONE_NUMBER',
-            to=self.mpesa_phone_number
-        )
+    # def send_sms_notification(self, amount):
+    #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
+    #     message = f'Dear {self.full_name}, your payment of Ksh {amount} has been successfully processed. Thank you!'
+    #     client.messages.create(
+    #         body=message,
+    #         from_='TWILIO_PHONE_NUMBER',
+    #         to=self.mpesa_phone_number
+    #     )
 
     def calculate_grades(self):
         """Calculates overall grades based on assessments."""
