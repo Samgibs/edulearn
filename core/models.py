@@ -80,7 +80,7 @@ class Teacher(models.Model):
     certifications = models.FileField(upload_to='Certifications/', blank=False, null=False)
     status = models.BooleanField(default=True)
     payment_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    
+
     payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, blank=False)
     mpesa_number = models.CharField(max_length=12, blank=True, null=True)
     mpesa_user_name = models.CharField(max_length=255, blank=True, null=True)
@@ -90,7 +90,9 @@ class Teacher(models.Model):
     net_salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, editable=False)
     tax_deductions = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, editable=False)
     loan_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, validators=[MinValueValidator(Decimal('0.00'))])
-    students = models.ManyToManyField('Student', through='StudentTeacher')
+
+    students = models.ManyToManyField('Student', through='ClassStudent')
+
     def save(self, *args, **kwargs):
         if not self.id:
             self.id = self.generate_id()
@@ -104,9 +106,9 @@ class Teacher(models.Model):
         return f"{prefix}{random_id}"
 
     def calculate_salary_deductions(self):
-        PAYE_TAX_RATE = Decimal('0.30')  
-        NHIF_RATE = Decimal('0.02')   
-        NSSF_RATE = Decimal('0.06')  
+        PAYE_TAX_RATE = Decimal('0.30')
+        NHIF_RATE = Decimal('0.02')
+        NSSF_RATE = Decimal('0.06')
 
         gross_salary = self.payment_rate
         tax_deductions = gross_salary * PAYE_TAX_RATE
@@ -117,49 +119,20 @@ class Teacher(models.Model):
         self.tax_deductions = total_deductions
         self.net_salary = gross_salary - total_deductions
 
-    def send_payment_notification(self, amount):
-        subject = 'Payment Received'
-        message = f'Dear {self.full_name},\n\nYou have received a payment of Ksh {amount}.\nThank you!'
-        recipient_list = [self.user.email]
-        send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
-
-    def view_student_marks(self, student):
-        """Returns the marks of the specified student."""
-        if student in self.students.all():
-            return student.calculate_grades()
-        else:
-            raise ValueError("You do not have access to this student's marks.")
-    
-    def get_students_marks(self):
-        """Get marks for all students assigned to the teacher."""
-        marks_data = {}
-        for student in self.students.all():
-            marks_data[student.full_name] = student.calculate_grades()  # Assuming this method calculates and returns grades.
-        return marks_data
-
-    # def send_sms_notification(self, amount):
-    #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
-    #     message = f'Dear {self.full_name}, you have received a payment of Ksh {amount}. Thank you!'
-    #     client.messages.create(
-    #         body=message,
-    #         from_='TWILIO_PHONE_NUMBER',
-    #         to=self.mpesa_number
-    #     )
-
     def __str__(self):
         return self.full_name
 
-class StudentTeacher(models.Model):
-    student = models.ForeignKey('Student', on_delete=models.CASCADE)  
-    teacher = models.ForeignKey('Teacher', on_delete=models.CASCADE)  
-    date_assigned = models.DateTimeField(auto_now_add=True)
+class ClassStudent(models.Model):
+    class_obj = models.ForeignKey('Classroom', on_delete=models.CASCADE)
+    student = models.ForeignKey('Student', on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    enrollment_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = (('student', 'teacher'),)
+        unique_together = ('class_obj', 'student', 'teacher')
 
     def __str__(self):
-        return f"{self.student.full_name} assigned to {self.teacher.full_name}"
-
+        return f"{self.student.full_name} enrolled in {self.class_obj.course.name} class"
 
 class Student(models.Model):
     PAYMENT_METHOD_CHOICES = [
@@ -231,39 +204,36 @@ class Student(models.Model):
             return f"Pay fees to {self.get_bank_name_display()} using account number {school_account}."
         return "No payment method selected."
 
-    def send_payment_notification(self, amount):
-        subject = 'Payment Confirmation'
-        message = f'Dear {self.full_name},\n\nYour payment of Ksh {amount} has been successfully processed.\nThank you!'
-        recipient_list = [self.user.email]
-        send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
+    def apply_discount(self):
+        """Apply a 15% discount if the student enrolls in more than one course."""
+        if self.enrolled_courses.count() > 1:
+            return self.total_fees * Decimal('0.85')
+        return self.total_fees
 
+    def initial_payment(self):
+        """Initial payment is 60% of the total (or discounted) fee."""
+        discounted_fees = self.apply_discount()
+        return discounted_fees * Decimal('0.60')
 
-
-    # def send_sms_notification(self, amount):
-    #     client = Client('TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN')
-    #     message = f'Dear {self.full_name}, your payment of Ksh {amount} has been successfully processed. Thank you!'
-    #     client.messages.create(
-    #         body=message,
-    #         from_='TWILIO_PHONE_NUMBER',
-    #         to=self.mpesa_phone_number
-    #     )
-
-    def calculate_grades(self):
-        """Calculates overall grades based on assessments."""
-        assessments = self.results.all()
-        total_score = 0
-        total_weight = 0
-        
-        for assessment in assessments:
-            student_assessment = self.get_student_assessment(assessment.id)
-            if student_assessment:
-                total_score += student_assessment.score * assessment.weight
-                total_weight += assessment.weight
-
-        return total_score / total_weight if total_weight else 0
+    def final_payment(self):
+        """Final payment is the remaining 40% of the total (or discounted) fee."""
+        discounted_fees = self.apply_discount()
+        return discounted_fees * Decimal('0.40')
 
     def __str__(self):
         return self.full_name
+
+
+class Classroom(models.Model):
+    name = models.CharField(max_length=100)
+    course = models.ForeignKey('Course', on_delete=models.CASCADE)
+    teacher = models.ForeignKey('Teacher', on_delete=models.CASCADE)
+    students = models.ManyToManyField('Student', through='ClassStudent')
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    def __str__(self):
+        return f"{self.course.name} taught by {self.teacher.full_name}"
 
 class Course(models.Model):
     PAYMENT_METHOD_CHOICES = [
@@ -512,12 +482,27 @@ class Progress(models.Model):
 class Enrollment(models.Model):
     student = models.ForeignKey('Student', on_delete=models.CASCADE)
     course = models.ForeignKey('Course', on_delete=models.CASCADE)
+    teacher = models.ForeignKey('Teacher', on_delete=models.CASCADE, blank=True, null=True)
     enrollment_date = models.DateTimeField(auto_now_add=True)
     payment_status = models.BooleanField(default=False)
     completion_status = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.student} - {self.course}"
+
+    def save(self, *args, **kwargs):
+        if not self.teacher:
+            self.teacher = self.assign_teacher()
+        super(Enrollment, self).save(*args, **kwargs)
+
+    def assign_teacher(self):
+        """Assign a teacher with less than 10 classes and relevant to the student's level."""
+        relevant_teachers = Teacher.objects.filter(teaching_level=self.student.education_level)
+        suitable_teachers = [teacher for teacher in relevant_teachers if teacher.enrollment_set.count() < 10]
+        
+        if suitable_teachers:
+            return suitable_teachers[0]
+        return None
     
 
 class Message(models.Model):
@@ -585,7 +570,7 @@ class TeacherBoard(models.Model):
     def __str__(self):
         return f"{self.teacher} - {self.course}"
     
-from django.db import models
+
 
 class CodeEditor(models.Model):
     student = models.ForeignKey('Student', on_delete=models.CASCADE)

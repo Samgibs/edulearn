@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     'two_factor',
     'mpesa', 
     'debug_toolbar',
-    'webpack_loader', 
+    'webpack_loader',
+    
 ]
 
 
