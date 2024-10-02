@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User 
 from .models import (
     Admin, Classroom, ClassStudent, StudentAssessment, Teacher, Student, Course, 
     Payment, Subject, Qualification, Assessment, Progress, Enrollment, Message, 
@@ -6,6 +7,11 @@ from .models import (
     CameraInteraction
 )
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields ='__all__'
+        
 class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Admin
