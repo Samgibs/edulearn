@@ -38,15 +38,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      // Verify token and get user info
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // You would typically verify the token here
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          // Set the token in API headers
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Fetch user profile to get role information
+          const profileResponse = await api.get('/users/profile/');
+          const userData = profileResponse.data;
+          
+          // Try to determine role by checking for student/teacher profiles
+          let role = null;
+          try {
+            const studentResponse = await api.get('/students/me/');
+            role = 'student';
+            userData.student = studentResponse.data;
+          } catch (error) {
+            try {
+              const teacherResponse = await api.get('/teachers/me/');
+              role = 'teacher';
+              userData.teacher = teacherResponse.data;
+            } catch (error) {
+              // No role assigned yet
+            }
+          }
+          
+          setUser({ ...userData, role });
+        } catch (error) {
+          console.error('Error initializing auth:', error);
+          // Clear invalid tokens
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          delete api.defaults.headers.common['Authorization'];
+        }
+      }
       setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    };
+    
+    initializeAuth();
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {

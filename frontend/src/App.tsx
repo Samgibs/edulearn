@@ -47,6 +47,11 @@ function App() {
             <Route path="messages" element={<Messages />} />
             <Route path="profile" element={<Profile />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="students" element={
+              user?.role === 'teacher' ? <TeacherDashboard /> :
+              user?.role === 'student' ? <StudentDashboard /> :
+              <Navigate to="/dashboard" />
+            } />
           </Route>
         </Routes>
       </div>
