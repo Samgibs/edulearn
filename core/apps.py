@@ -5,5 +5,7 @@ class CoreConfig(AppConfig):
     name = 'core'
 
     def ready(self):
-        from .models import create_admin_group
-        create_admin_group()
+        # Commented out to prevent database access during startup
+        # from .models import create_admin_group
+        # create_admin_group()  # Re-enable this after migrations
+        pass

@@ -39,6 +39,7 @@ def remove_admins_group():
     except Group.DoesNotExist:
         pass
 
+
 class Admin(models.Model):
     id = models.CharField(max_length=10, primary_key=True)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -175,7 +176,7 @@ class Student(models.Model):
     fees_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     total_fees = models.DecimalField(max_digits=10, decimal_places=2)
     fee_status = models.BooleanField(default=False)
-    progress = models.ForeignKey('Progress', on_delete=models.CASCADE, related_name='student_progress')
+    progress = models.OneToOneField('Progress', on_delete=models.CASCADE, related_name='student_progress', null=True) 
     enrolled_courses = models.ManyToManyField('Course', through='Enrollment')
     remaining_fee = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
 
@@ -263,6 +264,7 @@ class Course(models.Model):
 
     MPESA_PAYBILL_NUMBER = '123456'
 
+    # Fields for the course model
     title = models.CharField(max_length=100, primary_key=True)
     description = models.TextField(max_length=500)
     teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -277,7 +279,10 @@ class Course(models.Model):
         blank=False
     )
     
-    subjects = models.ManyToManyField('Subject', related_name='courses') 
+    subjects = models.ManyToManyField('Subject', related_name='courses')
+
+    # Add 'duration' field if needed
+    # duration = models.CharField(max_length=50, blank=True, null=True)
 
     syllabus_structure = models.CharField(max_length=20, choices=[
         ('full', 'Full Syllabus'),
@@ -285,21 +290,21 @@ class Course(models.Model):
         ('topic', 'Topic-Based'),
         ('customizable', 'Customizable'),
     ], default='full')
-    
+
     syllabus_content = models.CharField(max_length=20, choices=[
         ('core', 'Core Syllabus'),
         ('resources', 'Additional Resources'),
         ('assignments', 'Assignments and Assessments'),
         ('outcomes', 'Learning Outcomes'),
     ], default='core')
-    
+
     syllabus_format = models.CharField(max_length=20, choices=[
         ('pdf', 'PDF'),
         ('word', 'Word Document'),
         ('google_doc', 'Google Doc'),
         ('html', 'HTML'),
     ], default='pdf')
-    
+
     syllabus_availability = models.CharField(max_length=20, choices=[
         ('public', 'Public'),
         ('private', 'Private'),
@@ -340,7 +345,7 @@ class Course(models.Model):
             return f"Pay for the course '{self.title}' to {self.get_bank_name_display()} using account number {school_account}."
         return "No payment method selected."
 
-    def __str__(self): 
+    def __str__(self):
         return self.title
 
 class Payment(models.Model):
@@ -470,14 +475,26 @@ class StudentAssessment(models.Model):
 
 
 class Progress(models.Model):
+    # student_id = models.ForeignKey(Student, on_delete=models.CASCADE)
     student = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='progresses')
     course = models.ForeignKey('Course', on_delete=models.CASCADE)
-    modules_completed = models.IntegerField(default=0)
-    total_modules = models.IntegerField(default=0)
-    progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    modules_completed = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    total_modules = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+
+    @property
+    def progress_percentage(self):
+        """Calculate the progress percentage dynamically."""
+        if self.total_modules > 0:
+            return (self.modules_completed / self.total_modules) * 100
+        return 0.0 
+
+    def update_progress(self, completed_modules):
+        """Update the number of completed modules."""
+        self.modules_completed = min(self.modules_completed + completed_modules, self.total_modules)
+        self.save()
 
     def __str__(self):
-        return f"{self.student} - {self.course} - {self.progress_percentage}%"
+        return f"{self.student} - {self.course} - {self.progress_percentage:.2f}%"
 
 class Enrollment(models.Model):
     student = models.ForeignKey('Student', on_delete=models.CASCADE)

@@ -10,12 +10,19 @@ from .models import (
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields ='__all__'
+        fields = ['username', 'email', 'password'] 
+        extra_kwargs = {'password': {'write_only': True}}
+
+class SigninSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
         
 class AdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Admin
-        fields = '__all__'
+        fields = ['username', 'full_name', 'email', 'password']
+
 
 class ClassroomSerializer(serializers.ModelSerializer):
     course = serializers.StringRelatedField() 

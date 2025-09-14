@@ -22,6 +22,4 @@ admin.site.register(CameraInteraction)
 admin.site.register(Classroom)
 admin.site.register(ClassStudent)
 admin.site.register(StudentAssessment)
-# admin.site.register()
-# admin.site.register()
-# admin.site.register()
+
