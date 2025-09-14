@@ -28,12 +28,12 @@ const TeacherDashboard: React.FC = () => {
   const fetchTeacherData = async () => {
     try {
       // Fetch teacher courses
-      const coursesResponse = await api.get(endpoints.teachers.courses('me'));
-      const courses = coursesResponse.data;
+      const coursesResponse = await api.get(endpoints.teachers.meCourses);
+      const courses = coursesResponse.data || [];
       
       // Fetch assignments
       const assignmentsResponse = await api.get(endpoints.assignments.list);
-      const assignments = assignmentsResponse.data;
+      const assignments = assignmentsResponse.data || [];
       
       // Calculate stats
       const totalStudents = courses.reduce((acc: number, course: any) => {
@@ -49,6 +49,14 @@ const TeacherDashboard: React.FC = () => {
       });
     } catch (error) {
       console.error('Error fetching teacher data:', error);
+      // Set default empty stats on error
+      setStats({
+        total_courses: 0,
+        total_students: 0,
+        total_assignments: 0,
+        recent_courses: [],
+        recent_assignments: [],
+      });
     } finally {
       setLoading(false);
     }

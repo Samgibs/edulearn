@@ -74,6 +74,8 @@ export const endpoints = {
   // Students
   students: {
     list: '/students/',
+    me: '/students/me/',
+    meCourses: '/students/me/courses/',
     detail: (id: string) => `/students/${id}/`,
     courses: (id: string) => `/students/${id}/courses/`,
     progress: (id: string) => `/students/${id}/progress/`,
@@ -83,6 +85,8 @@ export const endpoints = {
   // Teachers
   teachers: {
     list: '/teachers/',
+    me: '/teachers/me/',
+    meCourses: '/teachers/me/courses/',
     detail: (id: string) => `/teachers/${id}/`,
     courses: (id: string) => `/teachers/${id}/courses/`,
     students: (id: string) => `/teachers/${id}/students/`,
@@ -104,6 +108,13 @@ export const endpoints = {
     detail: (id: number) => `/assignments/${id}/`,
     submit: (id: number) => `/assignments/${id}/submit/`,
     grade: (id: number) => `/assignments/${id}/grade/`,
+  },
+  
+  // Progress
+  progress: {
+    list: '/progress/',
+    detail: (id: number) => `/progress/${id}/`,
+    update: (id: number) => `/progress/${id}/update/`,
   },
   
   // Messages

@@ -16,7 +16,7 @@
     "@heroicons/react": "^2.0.0",
     "react-hook-form": "^7.43.0",
     "react-hot-toast": "^2.4.0",
-    "recharts": "^2.5.0",
+    "recharts": "^2.8.0",
     "react-dropzone": "^14.2.0",
     "date-fns": "^2.29.0",
     "clsx": "^1.2.0",

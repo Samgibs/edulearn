@@ -15,7 +15,7 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   signup: (username: string, email: string, password: string) => Promise<boolean>;
-  selectRole: (role: 'student' | 'teacher') => Promise<boolean>;
+  selectRole: (role: 'student' | 'teacher', formData?: any) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -52,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await api.post('/auth/signin/', { username, password });
-      const { access, refresh } = response.data;
+      const { access, refresh, role, dashboard_url } = response.data;
       
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
@@ -61,7 +61,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Get user profile
       const profileResponse = await api.get('/users/profile/');
-      setUser(profileResponse.data);
+      const userData = { ...profileResponse.data, role };
+      setUser(userData);
       
       toast.success('Login successful!');
       return true;
@@ -82,14 +83,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const selectRole = async (role: 'student' | 'teacher'): Promise<boolean> => {
+  const selectRole = async (role: 'student' | 'teacher', formData?: any): Promise<boolean> => {
     try {
-      await api.post('/auth/role-selection/', { role });
+      const payload = { role, ...formData };
+      await api.post('/auth/role-selection/', payload);
       setUser(prev => prev ? { ...prev, role } : null);
       toast.success(`Role selected: ${role}`);
       return true;
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Role selection failed');
+      const errorMessage = error.response?.data?.detail || 'Role selection failed';
+      if (errorMessage.includes('already has')) {
+        toast.error('You already have a profile. Please log out and log back in.');
+      } else {
+        toast.error(errorMessage);
+      }
       return false;
     }
   };

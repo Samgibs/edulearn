@@ -6,21 +6,177 @@ import { AcademicCapIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 const RoleSelection: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<'student' | 'teacher' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    education_level: 'Primary',
+    total_fees: 1000,
+    experience_years: 1,
+    teaching_level: 'Primary',
+    payment_rate: 5000
+  });
   
   const { selectRole } = useAuth();
   const navigate = useNavigate();
 
-  const handleRoleSelect = async (role: 'student' | 'teacher') => {
+  const handleRoleSelect = (role: 'student' | 'teacher') => {
     setSelectedRole(role);
+    setShowForm(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRole) return;
+    
     setLoading(true);
     
-    const success = await selectRole(role);
+    const success = await selectRole(selectedRole, formData);
     if (success) {
       navigate('/dashboard');
     }
     
     setLoading(false);
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'total_fees' || name === 'experience_years' || name === 'payment_rate' 
+        ? parseFloat(value) || 0 
+        : value
+    }));
+  };
+
+  if (showForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-bold text-secondary-900">
+              Complete Your {selectedRole === 'student' ? 'Student' : 'Teacher'} Profile
+            </h2>
+            <p className="mt-2 text-sm text-secondary-600">
+              Please provide the required information
+            </p>
+          </div>
+          
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              {selectedRole === 'student' && (
+                <>
+                  <div>
+                    <label htmlFor="education_level" className="block text-sm font-medium text-secondary-700">
+                      Education Level
+                    </label>
+                    <select
+                      id="education_level"
+                      name="education_level"
+                      value={formData.education_level}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    >
+                      <option value="Kindergarten">Kindergarten</option>
+                      <option value="Primary">Primary</option>
+                      <option value="High School">High School</option>
+                      <option value="University">University</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="total_fees" className="block text-sm font-medium text-secondary-700">
+                      Total Fees (KSH)
+                    </label>
+                    <input
+                      type="number"
+                      id="total_fees"
+                      name="total_fees"
+                      value={formData.total_fees}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+              
+              {selectedRole === 'teacher' && (
+                <>
+                  <div>
+                    <label htmlFor="experience_years" className="block text-sm font-medium text-secondary-700">
+                      Years of Experience
+                    </label>
+                    <input
+                      type="number"
+                      id="experience_years"
+                      name="experience_years"
+                      value={formData.experience_years}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="mt-1 block w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="teaching_level" className="block text-sm font-medium text-secondary-700">
+                      Teaching Level
+                    </label>
+                    <select
+                      id="teaching_level"
+                      name="teaching_level"
+                      value={formData.teaching_level}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    >
+                      <option value="Kindergarten">Kindergarten</option>
+                      <option value="Primary">Primary</option>
+                      <option value="High School">High School</option>
+                      <option value="University">University</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="payment_rate" className="block text-sm font-medium text-secondary-700">
+                      Payment Rate (KSH per month)
+                    </label>
+                    <input
+                      type="number"
+                      id="payment_rate"
+                      name="payment_rate"
+                      value={formData.payment_rate}
+                      onChange={handleInputChange}
+                      min="0"
+                      className="mt-1 block w-full px-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="flex-1 flex justify-center py-2 px-4 border border-secondary-300 rounded-md shadow-sm text-sm font-medium text-secondary-700 bg-white hover:bg-secondary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              >
+                {loading ? 'Creating Account...' : 'Complete Registration'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -93,18 +249,6 @@ const RoleSelection: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {loading && (
-          <div className="text-center">
-            <div className="inline-flex items-center px-4 py-2 font-semibold leading-6 text-sm shadow rounded-md text-white bg-primary-500 hover:bg-primary-400 transition ease-in-out duration-150 cursor-not-allowed">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Setting up your account...
-            </div>
-          </div>
-        )}
 
         <div className="text-center">
           <p className="text-sm text-secondary-500">
