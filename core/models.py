@@ -29,7 +29,8 @@ def create_admin_group():
 def assign_admin_group(sender, instance, created, **kwargs):
     if created:
         if instance.is_superuser:
-            admin_group = Group.objects.get(name='Admin')
+            # Create the admin group if it doesn't exist
+            admin_group, created = Group.objects.get_or_create(name='Admin')
             instance.groups.add(admin_group)
 
 def remove_admins_group():
@@ -111,11 +112,12 @@ class Teacher(models.Model):
         NHIF_RATE = Decimal('0.02')
         NSSF_RATE = Decimal('0.06')
 
-        gross_salary = self.payment_rate
+        gross_salary = Decimal(str(self.payment_rate))
         tax_deductions = gross_salary * PAYE_TAX_RATE
         nhif_deductions = gross_salary * NHIF_RATE
         nssf_deductions = gross_salary * NSSF_RATE
-        total_deductions = tax_deductions + nhif_deductions + nssf_deductions + self.loan_deductions
+        loan_deductions = Decimal(str(self.loan_deductions))
+        total_deductions = tax_deductions + nhif_deductions + nssf_deductions + loan_deductions
 
         self.tax_deductions = total_deductions
         self.net_salary = gross_salary - total_deductions

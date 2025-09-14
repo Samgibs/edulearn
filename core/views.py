@@ -63,40 +63,71 @@ class RoleSelectionView(APIView):
 
         user = request.user
 
-        
-        if role == 'student':
-    # Create or get the course
-            course, created = Course.objects.get_or_create(
-            title="Default Course Name",
-            defaults={
-                'description': 'This is a default course description.',
-                'teacher': user,
-                'price': 0.00,
-                'start_date': '2024-01-01',
-                'end_date': '2024-12-31',
-            }
-        )
+        try:
+            # Check if user already has a profile
+            if hasattr(user, 'student'):
+                return Response({"detail": "User already has a student profile."}, status=status.HTTP_400_BAD_REQUEST)
+            elif hasattr(user, 'teacher'):
+                return Response({"detail": "User already has a teacher profile."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Create the student object first
-            student = Student.objects.create(
-                user=user,
-                full_name=user.username,
-                fees_paid=0.00,
-                total_fees=1000.00,
-            )
+            if role == 'student':
+                # Validate required fields for student
+                required_fields = ['education_level', 'total_fees']
+                for field in required_fields:
+                    if field not in request.data:
+                        return Response({"detail": f"Field '{field}' is required for student registration."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Now, create the progress associated with the student
-            progress = Progress.objects.create(course=course, student=student)
+                # Create or get the course
+                course, created = Course.objects.get_or_create(
+                    title="Default Course Name",
+                    defaults={
+                        'description': 'This is a default course description.',
+                        'teacher': user,
+                        'price': 0.00,
+                        'start_date': '2024-01-01',
+                        'end_date': '2024-12-31',
+                        'level': request.data.get('education_level', 'Primary'),
+                        'requirements': 'Basic requirements',
+                    }
+                )
 
-        
-        elif role == 'teacher':
-            teacher = Teacher.objects.create(
-                user=user,
-                full_name=user.username,
-                
-            )
+                # Create the student object with required fields
+                student = Student.objects.create(
+                    user=user,
+                    full_name=user.username,
+                    education_level=request.data.get('education_level'),
+                    fees_paid=0.00,
+                    total_fees=request.data.get('total_fees', 1000.00),
+                    profile_picture='profile_pictures/default.jpg',  # Default profile picture
+                )
 
-        return Response({"message": f"Role {role} selected successfully."}, status=status.HTTP_200_OK)
+                # Now, create the progress associated with the student
+                progress = Progress.objects.create(course=course, student=student)
+
+            elif role == 'teacher':
+                # Validate required fields for teacher
+                required_fields = ['experience_years', 'teaching_level', 'payment_rate']
+                for field in required_fields:
+                    if field not in request.data:
+                        return Response({"detail": f"Field '{field}' is required for teacher registration."}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Create teacher with required fields
+                teacher = Teacher.objects.create(
+                    user=user,
+                    full_name=user.username,
+                    experience_years=request.data.get('experience_years'),
+                    teaching_level=request.data.get('teaching_level'),
+                    payment_rate=request.data.get('payment_rate'),
+                    profile_picture='profile_pictures/default.jpg',  # Default profile picture
+                    social_link='https://example.com',  # Default social link
+                    certifications='certifications/default.pdf',  # Default certification file
+                    payment_method='mpesa',  # Default payment method
+                )
+
+            return Response({"message": f"Role {role} selected successfully."}, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({"detail": f"Error creating {role}: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProgressView(APIView):
     def post(self, request, *args, **kwargs):
@@ -144,19 +175,29 @@ class SigninView(APIView):
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                         "message": "Login successful. Redirecting to student dashboard.",
-                        "dashboard_url": "/student-dashboard/"
+                        "dashboard_url": "/student-dashboard/",
+                        "role": "student"
                     }, status=status.HTTP_200_OK)
                 elif hasattr(user, 'teacher'):
                     return Response({
                         "refresh": str(refresh),
                         "access": str(refresh.access_token),
                         "message": "Login successful. Redirecting to teacher dashboard.",
-                        "dashboard_url": "/teacher-dashboard/"
+                        "dashboard_url": "/teacher-dashboard/",
+                        "role": "teacher"
+                    }, status=status.HTTP_200_OK)
+                else:
+                    # User exists but doesn't have a role assigned yet
+                    return Response({
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                        "message": "Login successful. Please select your role.",
+                        "dashboard_url": "/role-selection/"
                     }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Invalid username or password"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Invalid data", "details": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
@@ -274,6 +315,30 @@ class StudentPaymentsView(APIView):
         serializer = PaymentSerializer(payments, many=True)
         return Response(serializer.data)
 
+class StudentMeView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            student = Student.objects.get(user=request.user)
+            serializer = StudentSerializer(student)
+            return Response(serializer.data)
+        except Student.DoesNotExist:
+            return Response({"detail": "Student profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class StudentMeCoursesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            student = Student.objects.get(user=request.user)
+            enrollments = Enrollment.objects.filter(student=student)
+            courses = [enrollment.course for enrollment in enrollments]
+            serializer = CourseSerializer(courses, many=True)
+            return Response(serializer.data)
+        except Student.DoesNotExist:
+            return Response({"detail": "Student profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
 
 # ==================== TEACHER APIs ====================
 
@@ -337,6 +402,29 @@ class TeacherSalaryView(APIView):
             'bank_account_number': teacher.bank_account_number
         }
         return Response(salary_data)
+
+class TeacherMeView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            teacher = Teacher.objects.get(user=request.user)
+            serializer = TeacherSerializer(teacher)
+            return Response(serializer.data)
+        except Teacher.DoesNotExist:
+            return Response({"detail": "Teacher profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class TeacherMeCoursesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            teacher = Teacher.objects.get(user=request.user)
+            courses = Course.objects.filter(teacher=teacher.user)
+            serializer = CourseSerializer(courses, many=True)
+            return Response(serializer.data)
+        except Teacher.DoesNotExist:
+            return Response({"detail": "Teacher profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 # ==================== COURSE APIs ====================

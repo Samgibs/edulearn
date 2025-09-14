@@ -19,6 +19,8 @@ urlpatterns = [
     
     # Student APIs
     path('students/', views.StudentListCreateView.as_view(), name='student-list'),
+    path('students/me/', views.StudentMeView.as_view(), name='student-me'),
+    path('students/me/courses/', views.StudentMeCoursesView.as_view(), name='student-me-courses'),
     path('students/<str:pk>/', views.StudentDetailView.as_view(), name='student-detail'),
     path('students/<str:pk>/courses/', views.StudentCoursesView.as_view(), name='student-courses'),
     path('students/<str:pk>/progress/', views.StudentProgressView.as_view(), name='student-progress'),
@@ -26,6 +28,8 @@ urlpatterns = [
     
     # Teacher APIs
     path('teachers/', views.TeacherListCreateView.as_view(), name='teacher-list'),
+    path('teachers/me/', views.TeacherMeView.as_view(), name='teacher-me'),
+    path('teachers/me/courses/', views.TeacherMeCoursesView.as_view(), name='teacher-me-courses'),
     path('teachers/<str:pk>/', views.TeacherDetailView.as_view(), name='teacher-detail'),
     path('teachers/<str:pk>/courses/', views.TeacherCoursesView.as_view(), name='teacher-courses'),
     path('teachers/<str:pk>/students/', views.TeacherStudentsView.as_view(), name='teacher-students'),
